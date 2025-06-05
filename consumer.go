@@ -127,7 +127,6 @@ func NewConsumer(config *ConsumerConfig) (*Consumer, error) {
 	saramaConfig.Consumer.Fetch.Default = config.FetchDefault
 	saramaConfig.Consumer.Fetch.Max = config.FetchMax
 	saramaConfig.Consumer.Retry.Backoff = config.RetryBackoff
-	saramaConfig.Consumer.Retry.Max = config.MaxRetries
 
 	consumer, err := sarama.NewConsumerGroup(config.Brokers, config.GroupID, saramaConfig)
 	if err != nil {
