@@ -4,7 +4,7 @@ go 1.23.3
 
 require (
 	github.com/Shopify/sarama v1.38.1
-	github.com/paaavkata/go-logger v0.0.0-20250511165020-974ea0722b39
+	github.com/paaavkata/go-logger v0.1.1
 	github.com/spf13/viper v1.18.2
 )
 

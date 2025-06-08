@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/paaavkata/go-logger/logger"
+	logger "github.com/paaavkata/go-logger"
 	"github.com/spf13/viper"
 )
 
