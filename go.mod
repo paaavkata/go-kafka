@@ -1,4 +1,4 @@
-module github.com/file-convert/go-kafka
+module github.com/paaavkata/go-kafka
 
 go 1.23.3
 
