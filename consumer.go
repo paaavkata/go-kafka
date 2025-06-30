@@ -10,6 +10,16 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Message represents a Kafka message with all necessary fields
+type Message struct {
+	Topic     string
+	Partition int32
+	Offset    int64
+	Key       []byte
+	Value     []byte
+	Timestamp time.Time
+}
+
 const (
 	// Default values for consumer
 	DefaultConsumerGroupID           = "file-convert-group"
@@ -148,8 +158,8 @@ func (c *Consumer) Close() error {
 	return nil
 }
 
-// ConsumeMessages starts consuming messages from Kafka
-func (c *Consumer) ConsumeMessages(ctx context.Context, handler func(*sarama.ConsumerMessage) error) error {
+// ConsumeMessages starts consuming messages from Kafka using our abstracted Message type
+func (c *Consumer) ConsumeMessages(ctx context.Context, handler func(*Message) error) error {
 	consumerGroup := &ConsumerGroupHandler{
 		handler: handler,
 	}
@@ -168,7 +178,7 @@ func (c *Consumer) ConsumeMessages(ctx context.Context, handler func(*sarama.Con
 
 // ConsumerGroupHandler implements sarama.ConsumerGroupHandler
 type ConsumerGroupHandler struct {
-	handler func(*sarama.ConsumerMessage) error
+	handler func(*Message) error
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
@@ -183,13 +193,23 @@ func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages()
 func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	for message := range claim.Messages() {
-		err := h.handler(message)
+	for saramaMsg := range claim.Messages() {
+		// Convert Sarama message to our Message type
+		msg := &Message{
+			Topic:     saramaMsg.Topic,
+			Partition: saramaMsg.Partition,
+			Offset:    saramaMsg.Offset,
+			Key:       saramaMsg.Key,
+			Value:     saramaMsg.Value,
+			Timestamp: saramaMsg.Timestamp,
+		}
+
+		err := h.handler(msg)
 		if err != nil {
 			logger.Errorf("Error processing message: %v", err)
 			continue
 		}
-		session.MarkMessage(message, "")
+		session.MarkMessage(saramaMsg, "")
 	}
 	return nil
 }
