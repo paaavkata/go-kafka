@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	logger "github.com/paaavkata/go-logger"
 	"github.com/spf13/viper"
 )
