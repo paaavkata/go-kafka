@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	logger "github.com/paaavkata/go-logger"
 	"github.com/spf13/viper"
 )
 
@@ -160,41 +159,25 @@ func (c *Consumer) Close() error {
 
 // ConsumeMessages starts consuming messages from Kafka using our abstracted Message type
 func (c *Consumer) ConsumeMessages(ctx context.Context, handler func(*Message) error) error {
-	consumerGroup := &ConsumerGroupHandler{
-		handler: handler,
-	}
-
-	for {
-		err := c.consumer.Consume(ctx, c.topics, consumerGroup)
-		if err != nil {
-			return fmt.Errorf("error from consumer: %w", err)
-		}
-
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-	}
+	consumerHandler := &consumerGroupHandler{handler: handler}
+	return c.consumer.Consume(ctx, c.topics, consumerHandler)
 }
 
-// ConsumerGroupHandler implements sarama.ConsumerGroupHandler
-type ConsumerGroupHandler struct {
+// consumerGroupHandler implements sarama.ConsumerGroupHandler
+type consumerGroupHandler struct {
 	handler func(*Message) error
 }
 
-// Setup is run at the beginning of a new session, before ConsumeClaim
-func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
+func (h *consumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
-func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
+func (h *consumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages()
-func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for saramaMsg := range claim.Messages() {
-		// Convert Sarama message to our Message type
 		msg := &Message{
 			Topic:     saramaMsg.Topic,
 			Partition: saramaMsg.Partition,
@@ -206,10 +189,8 @@ func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 		err := h.handler(msg)
 		if err != nil {
-			logger.Errorf("Error processing message: %v", err)
-			continue
+			return err
 		}
-		session.MarkMessage(saramaMsg, "")
 	}
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	logger "github.com/paaavkata/go-logger"
 	"github.com/spf13/viper"
 )
 
@@ -164,12 +163,11 @@ func (p *Producer) SendMessage(key string, value interface{}) error {
 		Value: sarama.ByteEncoder(jsonValue),
 	}
 
-	partition, offset, err := p.producer.SendMessage(msg)
+	_, _, err = p.producer.SendMessage(msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	logger.Infof("Message sent to partition %d at offset %d", partition, offset)
 	return nil
 }
 
@@ -190,11 +188,10 @@ func (p *Producer) SendMessageWithContext(ctx context.Context, key string, value
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		partition, offset, err := p.producer.SendMessage(msg)
+		_, _, err := p.producer.SendMessage(msg)
 		if err != nil {
 			return fmt.Errorf("failed to send message: %w", err)
 		}
-		logger.Infof("Message sent to partition %d at offset %d", partition, offset)
 		return nil
 	}
 }
