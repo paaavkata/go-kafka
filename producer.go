@@ -43,6 +43,7 @@ type ProducerConfig struct {
 	RetryBackoff      time.Duration
 	RetryMax          int
 	EnableIdempotence bool
+	TLS               *TLSConfig
 }
 
 // NewProducerConfigFromViper creates a new producer configuration from Viper
@@ -64,7 +65,25 @@ func NewProducerConfigFromViper() *ProducerConfig {
 		EnableIdempotence: viper.GetBool("kafka.producer.enable_idempotence"),
 	}
 
-	// Set defaults if not configured
+	// Load TLS configuration if enabled
+	if viper.GetBool("kafka.tls.enabled") {
+		config.TLS = &TLSConfig{
+			Enabled:            true,
+			CAFile:             viper.GetString("kafka.tls.ca_file"),
+			CertFile:           viper.GetString("kafka.tls.cert_file"),
+			KeyFile:            viper.GetString("kafka.tls.key_file"),
+			InsecureSkipVerify: viper.GetBool("kafka.tls.insecure_skip_verify"),
+		}
+	}
+
+	applyProducerDefaults(config)
+
+	return config
+}
+
+// applyProducerDefaults fills zero-value fields so programmatic ProducerConfig
+// (partial structs) is valid for Sarama. Safe to call multiple times.
+func applyProducerDefaults(config *ProducerConfig) {
 	if len(config.Brokers) == 0 {
 		config.Brokers = []string{"localhost:9092"}
 	}
@@ -98,14 +117,17 @@ func NewProducerConfigFromViper() *ProducerConfig {
 	if config.RetryMax == 0 {
 		config.RetryMax = DefaultProducerRetries
 	}
-
-	return config
+	if config.RequiredAcks == 0 {
+		config.RequiredAcks = sarama.WaitForAll
+	}
 }
 
 // NewProducer creates a new Kafka producer
 func NewProducer(config *ProducerConfig) (*Producer, error) {
 	if config == nil {
 		config = NewProducerConfigFromViper()
+	} else {
+		applyProducerDefaults(config)
 	}
 
 	if len(config.Brokers) == 0 {
@@ -129,6 +151,16 @@ func NewProducer(config *ProducerConfig) (*Producer, error) {
 	saramaConfig.Producer.Flush.Frequency = config.BatchWait
 	saramaConfig.Producer.Idempotent = config.EnableIdempotence
 	saramaConfig.ClientID = config.ClientID
+
+	// Configure TLS if enabled
+	if config.TLS != nil && config.TLS.Enabled {
+		tlsConfig, err := createTLSConfig(config.TLS)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create TLS config: %w", err)
+		}
+		saramaConfig.Net.TLS.Enable = true
+		saramaConfig.Net.TLS.Config = tlsConfig
+	}
 
 	producer, err := sarama.NewSyncProducer(config.Brokers, saramaConfig)
 	if err != nil {
