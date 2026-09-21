@@ -1,3 +1,5 @@
+> **DEPRECATED (2026-09-21).** This library has zero real Go-file importers, independently verified via `grep -rl "paaavkata/go-kafka" --include="*.go" /storage/WorkspaceFileConvert/backend_apps` (which includes the nested `SecScanApp/` tree) → no matches. The only remaining reference anywhere is `conversion-service/go.mod`'s `replace` directive, which has no matching `require` and is inert. This library has been fully superseded by NATS JetStream via [`github.com/paaavkata/go-nats`](../go-nats). Do not use this library for new code — use `go-nats` instead. The content below is kept for historical reference only.
+
 # Go Kafka Library
 
 A shared library for Kafka operations across FileConvert microservices.
